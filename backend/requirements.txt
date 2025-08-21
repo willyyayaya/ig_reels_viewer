@@ -1,0 +1,39 @@
+# Web 框架
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+
+# 資料庫
+sqlalchemy==2.0.23
+sqlite3
+
+# Instagram 自動化 (謹慎使用)
+selenium==4.15.2
+webdriver-manager==4.0.1
+playwright==1.40.0
+
+# HTTP 請求
+httpx==0.25.2
+requests==2.31.0
+
+# 資料處理
+pydantic==2.5.0
+python-multipart==0.0.6
+
+# 工具函式
+python-dotenv==1.0.0
+loguru==0.7.2
+
+# 任務隊列
+celery==5.3.4
+redis==5.0.1
+
+# 時間處理
+python-dateutil==2.8.2
+
+# CORS
+fastapi-cors==0.0.6
+
+# 開發工具
+pytest==7.4.3
+black==23.11.0
+flake8==6.1.0

@@ -1,0 +1,13 @@
+@echo off
+echo 🎬 啟動 Instagram Reels Viewer 後端...
+echo.
+cd backend
+echo 🐍 檢查 Python 環境...
+python --version
+echo.
+echo 📦 安裝依賴...
+pip install -r requirements.txt
+echo.
+echo 🚀 啟動 FastAPI 服務器...
+python main.py
+pause
