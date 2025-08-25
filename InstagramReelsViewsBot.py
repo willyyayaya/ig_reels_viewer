@@ -21,6 +21,56 @@ import json
 username= "qqqqqwerty201" #Instagram Username
 password= "a130629925" #Instagram Password
 
+def ensure_video_playing():
+    """確保視頻開始播放以計算觀看次數"""
+    global driver
+    try:
+        print("▶️ 確保視頻播放中...")
+        
+        # 等待視頻元素載入
+        video_element = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.TAG_NAME, "video"))
+        )
+        
+        # 點擊視頻區域確保播放
+        actions = ActionChains(driver)
+        actions.move_to_element(video_element).click().perform()
+        
+        time.sleep(1)
+        
+        # 檢查是否有播放按鈕需要點擊
+        try:
+            play_selectors = [
+                '[aria-label*="播放"]',
+                '[aria-label*="Play"]',
+                '[aria-label*="play"]',
+                'button[aria-label*="播放"]',
+                'svg[aria-label*="播放"]'
+            ]
+            
+            for selector in play_selectors:
+                try:
+                    play_btn = driver.find_element(By.CSS_SELECTOR, selector)
+                    if play_btn.is_displayed():
+                        play_btn.click()
+                        print("✅ 點擊播放按鈕")
+                        time.sleep(1)
+                        break
+                except:
+                    continue
+                    
+        except:
+            pass
+            
+        # 滾動到視頻中央確保可見
+        driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", video_element)
+        time.sleep(1)
+        
+        print("✅ 視頻播放確認完成")
+        
+    except Exception as e:
+        print(f"⚠️ 視頻播放確認失敗: {e}")
+
 def simulate_human_behavior():
     """模擬人類瀏覽行為"""
     global driver
@@ -145,6 +195,10 @@ finally:
         
         # 等待頁面載入
         time.sleep(random.randint(2, 5))
+        
+        # 如果是 reel 或貼文，確保視頻開始播放
+        if "reel" in url or "p/" in url:
+            ensure_video_playing()
         
         # 模擬人類行為
         simulate_human_behavior()
