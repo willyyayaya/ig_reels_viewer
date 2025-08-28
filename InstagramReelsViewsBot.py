@@ -269,7 +269,7 @@ finally:
     
     # 目標 Reel 網址列表（混合不同內容）
     target_reels = [
-        "https://www.instagram.com/reel/DLmJhPFuWAo/",  # 主要目標
+        "https://www.instagram.com/reel/DNKYwvRxtBd/",  # 主要目標
         
         # 可以添加其他 reels 作為混淆
     ]
