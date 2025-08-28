@@ -28,24 +28,39 @@ def ensure_video_playing():
         print("▶️ 確保視頻播放中...")
         
         # 等待視頻元素載入
-        video_element = WebDriverWait(driver, 10).until(
+        video_element = WebDriverWait(driver, 15).until(
             EC.presence_of_element_located((By.TAG_NAME, "video"))
         )
+        
+        # 滾動到視頻中央確保完全可見
+        driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", video_element)
+        time.sleep(2)
         
         # 點擊視頻區域確保播放
         actions = ActionChains(driver)
         actions.move_to_element(video_element).click().perform()
-        
         time.sleep(1)
         
-        # 檢查是否有播放按鈕需要點擊
-        try:
+        # 檢查視頻是否真的在播放
+        is_playing = driver.execute_script("""
+            var video = arguments[0];
+            return !video.paused && !video.ended && video.readyState > 2;
+        """, video_element)
+        
+        if not is_playing:
+            print("🔄 視頻未播放，嘗試手動啟動...")
+            # 強制播放視頻
+            driver.execute_script("arguments[0].play();", video_element)
+            time.sleep(1)
+            
+            # 檢查是否有播放按鈕需要點擊
             play_selectors = [
                 '[aria-label*="播放"]',
                 '[aria-label*="Play"]',
                 '[aria-label*="play"]',
                 'button[aria-label*="播放"]',
-                'svg[aria-label*="播放"]'
+                'svg[aria-label*="播放"]',
+                '.x1i10hfl[role="button"]'  # Instagram 通用播放按鈕
             ]
             
             for selector in play_selectors:
@@ -54,17 +69,37 @@ def ensure_video_playing():
                     if play_btn.is_displayed():
                         play_btn.click()
                         print("✅ 點擊播放按鈕")
-                        time.sleep(1)
+                        time.sleep(2)
                         break
                 except:
                     continue
-                    
-        except:
-            pass
+        
+        # 再次確認播放狀態
+        time.sleep(2)
+        final_status = driver.execute_script("""
+            var video = arguments[0];
+            return {
+                playing: !video.paused && !video.ended && video.readyState > 2,
+                currentTime: video.currentTime,
+                duration: video.duration,
+                muted: video.muted
+            };
+        """, video_element)
+        
+        if final_status['playing']:
+            print(f"✅ 視頻正在播放 - 時長: {final_status['duration']:.1f}s, 當前: {final_status['currentTime']:.1f}s")
             
-        # 滾動到視頻中央確保可見
-        driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", video_element)
-        time.sleep(1)
+            # 確保音量開啟（某些情況下靜音可能影響計算）
+            if final_status['muted']:
+                driver.execute_script("arguments[0].muted = false;", video_element)
+                print("🔊 取消靜音")
+        else:
+            print("⚠️ 視頻播放狀態確認失敗")
+            
+        # 模擬真實觀看行為 - 短暫滾動
+        driver.execute_script("window.scrollBy(0, 50);")
+        time.sleep(0.5)
+        driver.execute_script("window.scrollBy(0, -50);")
         
         print("✅ 視頻播放確認完成")
         
@@ -76,42 +111,80 @@ def simulate_human_behavior():
     global driver
     actions = ActionChains(driver)
     
-    # 隨機選擇 1-3 種行為
+    print("🤖 模擬人類行為...")
+    
+    # 更豐富的行為模式
     behaviors = []
     
-    # 滾動行為 (80% 機率)
-    if random.random() < 0.8:
+    # 滾動行為 (90% 機率)
+    if random.random() < 0.9:
         behaviors.append("scroll")
     
-    # 暫停行為 (30% 機率)
-    if random.random() < 0.3:
+    # 滑鼠移動 (70% 機率)
+    if random.random() < 0.7:
+        behaviors.append("mouse_move")
+    
+    # 暫停行為 (40% 機率)
+    if random.random() < 0.4:
         behaviors.append("pause")
     
-    # 點擊行為 (20% 機率)
-    if random.random() < 0.2:
-        behaviors.append("click")
+    # 視頻互動 (30% 機率)
+    if random.random() < 0.3:
+        behaviors.append("video_interact")
     
     for behavior in behaviors:
         if behavior == "scroll":
-            # 隨機滾動
-            scroll_amount = random.randint(-300, 500)
-            driver.execute_script(f"window.scrollBy(0, {scroll_amount});")
-            time.sleep(random.uniform(0.5, 2))
+            # 模擬真實滾動模式
+            scroll_patterns = [
+                lambda: driver.execute_script("window.scrollBy(0, 150);"),  # 向下
+                lambda: driver.execute_script("window.scrollBy(0, -100);"), # 向上
+                lambda: driver.execute_script("window.scrollBy(0, 300);"),  # 快速向下
+            ]
+            pattern = random.choice(scroll_patterns)
+            pattern()
+            time.sleep(random.uniform(0.8, 2.5))
             
-        elif behavior == "pause":
-            # 隨機暫停
-            time.sleep(random.uniform(1, 4))
-            
-        elif behavior == "click":
-            # 嘗試點擊無害的元素（如空白區域）
+        elif behavior == "mouse_move":
+            # 隨機滑鼠移動（模擬真實用戶）
             try:
                 actions.move_by_offset(
-                    random.randint(100, 400), 
-                    random.randint(100, 400)
-                ).click().perform()
-                time.sleep(random.uniform(0.5, 1.5))
+                    random.randint(-200, 200), 
+                    random.randint(-150, 150)
+                ).perform()
+                time.sleep(random.uniform(0.3, 1))
             except:
                 pass
+            
+        elif behavior == "pause":
+            # 隨機暫停（模擬用戶思考）
+            pause_time = random.uniform(1.5, 5)
+            print(f"⏸️ 暫停 {pause_time:.1f} 秒（模擬思考）")
+            time.sleep(pause_time)
+            
+        elif behavior == "video_interact":
+            # 與視頻相關的互動
+            try:
+                video_element = driver.find_element(By.TAG_NAME, "video")
+                
+                # 隨機選擇互動類型
+                interactions = [
+                    lambda: actions.move_to_element(video_element).perform(),  # 懸停
+                    lambda: actions.double_click(video_element).perform(),     # 雙擊
+                    lambda: actions.context_click(video_element).perform(),    # 右鍵（但立即取消）
+                ]
+                
+                interaction = random.choice(interactions)
+                interaction()
+                time.sleep(random.uniform(0.5, 1.5))
+                
+                # 如果是右鍵，按 ESC 取消
+                if interaction == interactions[2]:
+                    actions.send_keys(Keys.ESCAPE).perform()
+                    
+            except:
+                pass
+    
+    print("✅ 人類行為模擬完成")
 
 # 人性化設定
 USER_AGENTS = [
@@ -129,7 +202,39 @@ chrome_options.add_experimental_option('useAutomationExtension', False)
 chrome_options.add_argument("--disable-dev-shm-usage")
 chrome_options.add_argument("--no-sandbox")
 
-driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
+# 減少日誌輸出
+chrome_options.add_argument("--disable-logging")
+chrome_options.add_argument("--disable-gpu-logging")
+chrome_options.add_argument("--log-level=3")
+chrome_options.add_argument("--disable-extensions")
+chrome_options.add_argument("--disable-plugins")
+
+# 提升穩定性
+chrome_options.add_argument("--disable-web-security")
+chrome_options.add_argument("--disable-features=VizDisplayCompositor")
+chrome_options.add_argument("--disable-ipc-flooding-protection")
+
+print("🚀 正在啟動 Chrome 瀏覽器...")
+
+try:
+    # 直接使用系統 PATH 中的 chromedriver（避免 WebDriverManager 的問題）
+    driver = webdriver.Chrome(options=chrome_options)
+    print("✅ 使用系統 ChromeDriver 成功啟動")
+except Exception as e1:
+    print(f"⚠️ 系統 ChromeDriver 失敗: {e1}")
+    print("🔄 嘗試使用 WebDriverManager...")
+    try:
+        # 備用方案：使用 WebDriverManager
+        from webdriver_manager.chrome import ChromeDriverManager
+        driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
+        print("✅ 使用 WebDriverManager 成功啟動")
+    except Exception as e2:
+        print(f"❌ WebDriverManager 也失敗: {e2}")
+        print("📋 解決方案：")
+        print("1. 確保已安裝 Chrome 瀏覽器")
+        print("2. 下載對應版本的 ChromeDriver 並放入 PATH")
+        print("3. 或使用 'pip install webdriver-manager' 重新安裝")
+        exit(1)
 driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
 driver.get("https://www.instagram.com/")
 enter_username = WebDriverWait(driver,20).until(EC.presence_of_element_located((By.NAME, 'username')))
@@ -164,21 +269,20 @@ finally:
     
     # 目標 Reel 網址列表（混合不同內容）
     target_reels = [
-        "https://www.instagram.com/p/DNpRhVMpyS0/",  # 主要目標
-        "https://www.instagram.com/reel/DNkEYnFpzXH/",
-        "https://www.instagram.com/reel/DNXhuRKpuG5/"
+        "https://www.instagram.com/reel/DLmJhPFuWAo/",  # 主要目標
+        
         # 可以添加其他 reels 作為混淆
     ]
     
     # 減少觀看次數以降低風險
-    max_views = 20  # 從 500 降到 20
-    target_views = 0  # 目標 reel 的觀看次數
+    max_views = 120  # 從 500 降到 20
+    target_views = 50  # 目標 reel 的觀看次數
     
     for i in range(max_views):
         print(f"📺 第 {i+1}/{max_views} 次觀看")
         
         # 60% 機率觀看目標 reel，40% 觀看其他內容
-        if random.random() < 0.6 and target_views < 12:  # 最多 12 次觀看目標
+        if random.random() < 0.6 and target_views < 100:  # 最多 100 次觀看目標
             url = target_reels[0]
             target_views += 1
             print(f"🎯 觀看目標內容 (第 {target_views} 次)")
@@ -191,10 +295,25 @@ finally:
             url = random.choice(explore_urls)
             print(f"🔍 瀏覽其他內容: {url}")
         
-        driver.get(url)
-        
-        # 等待頁面載入
-        time.sleep(random.randint(2, 5))
+        try:
+            print(f"🌐 導航至: {url}")
+            driver.get(url)
+            
+            # 等待頁面載入
+            time.sleep(random.randint(2, 5))
+            
+            # 檢查是否成功載入頁面
+            current_url = driver.current_url
+            if "instagram.com" not in current_url:
+                print(f"⚠️ 頁面載入異常，當前 URL: {current_url}")
+                continue
+            else:
+                print(f"✅ 頁面載入成功")
+                
+        except Exception as e:
+            print(f"❌ 導航失敗: {e}")
+            print("🔄 跳過此次觀看，繼續下一個...")
+            continue
         
         # 如果是 reel 或貼文，確保視頻開始播放
         if "reel" in url or "p/" in url:
@@ -205,19 +324,46 @@ finally:
         
         # 觀看時間：確保足夠長以計算觀看次數
         if "reel" in url or "p/" in url:
-            # Reels/貼文需要至少 3-5 秒才計算觀看，我們設 8-25 秒更安全
-            watch_time = random.randint(8, 25)
+            # Instagram Reels 觀看次數計算標準：
+            # - 至少 3 秒連續播放
+            # - 視頻必須在可視區域
+            # - 真實的用戶互動
+            watch_time = random.randint(15, 45)  # 增加觀看時間確保計算
             print(f"🎯 目標內容觀看時間: {watch_time} 秒")
+            
+            # 分段觀看，模擬真實用戶行為
+            segments = random.randint(2, 4)
+            time_per_segment = watch_time // segments
+            
+            for segment in range(segments):
+                print(f"📺 觀看片段 {segment + 1}/{segments} ({time_per_segment}秒)")
+                
+                # 每個片段中間添加微互動
+                if segment > 0:
+                    # 輕微滾動
+                    scroll_amount = random.randint(-100, 100)
+                    driver.execute_script(f"window.scrollBy(0, {scroll_amount});")
+                    time.sleep(0.5)
+                    
+                    # 隨機點擊視頻區域（重新確認播放）
+                    try:
+                        video_element = driver.find_element(By.TAG_NAME, "video")
+                        actions = ActionChains(driver)
+                        actions.move_to_element(video_element).click().perform()
+                        time.sleep(0.5)
+                    except:
+                        pass
+                
+                time.sleep(time_per_segment)
+                
         else:
             # 探索頁面瀏覽時間
-            watch_time = random.randint(15, 45)
+            watch_time = random.randint(15, 20)
             print(f"🔍 探索頁面瀏覽時間: {watch_time} 秒")
-            
-        print(f"⏰ 觀看 {watch_time} 秒")
-        time.sleep(watch_time)
+            time.sleep(watch_time)
         
         # 觀看間隔：更長的隨機延遲
         if i < max_views - 1:  # 最後一次不需要延遲
-            interval = random.randint(30, 120)  # 30秒到2分鐘
+            interval = random.randint(5, 30)  # 30秒到2分鐘
             print(f"💤 休息 {interval} 秒...")
             time.sleep(interval)
